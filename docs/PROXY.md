@@ -30,7 +30,7 @@
 
 这些只是格式示例，不会自动创建对应端口。`127.0.0.1` 是机器人所在服务器的本机地址；电脑上的代理软件和服务器是两个环境。
 
-浏览器代理协议参考 [Playwright 官方网络文档](https://playwright.dev/python/docs/network#http-proxy)。本项目目前只向 Playwright 传入 `server` 字段，**没有提供独立的代理 username/password 配置**。不要把 `http://用户名:密码@地址:端口` 当作已验证支持的配置。
+浏览器代理协议参考 [Playwright 官方网络文档](https://playwright.dev/python/docs/network#http-proxy)。本项目目前只向 Playwright 传入 `server` 字段，**没有提供独立的代理 username/password 配置**。不要把账号密码直接嵌入代理 URL 当作已验证支持的配置。
 
 需要认证的代理可以先通过你自己的本地转发服务处理上游认证，机器人连接该转发服务的本机端口。不要将无认证转发端口开放到公网；真实上游账号密码只保存在本地私密配置中。
 
