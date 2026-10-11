@@ -1,5 +1,7 @@
 # douyin-bot · 抖音 AI 好友助手
 
+[![公开版检查](https://github.com/l0yce/douyin-bot/actions/workflows/check.yml/badge.svg)](https://github.com/l0yce/douyin-bot/actions/workflows/check.yml)
+
 把 **抖音私信机器人、幕间系统和网页控制面板** 放在一起的项目。
 
 让机器人只回复白名单好友，设置角色的说话方式，参考你手动发过的消息，并在网页上管理聊天、剧情、记忆和运行状态。

@@ -9,6 +9,8 @@
 - 启动真实幕间桥接与空 SQLite 数据，确认健康状态 ready、未认证请求被拒绝，以及管理配置接口隐藏模型密钥。
 - 公共文件密钥格式与运行文件检查；在服务器本地对照真实配置中的敏感值和人设文字片段，未发现匹配。实际私密值不被写入发布检查脚本。
 
-本次 Linux 沙箱使用既有 Node.js 18 环境作兼容检查，另在 Node.js 24 完成依赖安装、构建和模块加载检查。桥接持久化依赖 Linux 文件行为，不支持直接在 Windows 运行完整服务。仓库声明 Node.js >=20，并配置 GitHub Actions 使用 Node.js 22 重建和检查。干净 Ubuntu/Debian 从 apt 安装到真人抖音账号收发的全流程，没有在本次公开版整理中重做。依赖检查结果见 [DEPENDENCIES.md](DEPENDENCIES.md)。
+GitHub Actions 已在 **Ubuntu 24.04、Python 3.11、Node.js 22** 环境完成依赖安装、重建、全部 4 项离线测试和发布检查：[首次通过记录](https://github.com/l0yce/douyin-bot/actions/runs/38135563605)。
+
+本次服务器沙箱另使用既有 Node.js 18 环境作兼容检查，Node.js 24 完成依赖安装、构建和模块加载检查。桥接持久化依赖 Linux 文件行为，不支持直接在 Windows 运行完整服务。仓库要求 Node.js >=20。从 apt 安装系统依赖到真人抖音账号收发的全流程，没有在本次公开版整理中重做。依赖检查结果见 [DEPENDENCIES.md](DEPENDENCIES.md)。
 
 不包含真实账号、模型密钥或邮件授权码，因此公开版的离线验证不会向好友发消息、调用付费模型或发送邮件。抖音登录、评论和发送效果取决于部署者的账号、网络和网页状态。
