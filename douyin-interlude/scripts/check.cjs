@@ -8,3 +8,4 @@ assert.equal(config.onebot.enabled, false);
 assert.equal(config.chatActions.enabled, false);
 assert.equal(config.model.audio.enabled, false);
 console.log('PASS: vendored engine loads, configuration schema works, non-Douyin channels disabled');
+require('./check-token-limits.cjs');

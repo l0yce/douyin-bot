@@ -25,7 +25,7 @@ const baseConfig = {
       useForMain: true, useForCompaction: true, useForAlter: true,useForWorldSeeding:true },
       ...(bot.ai.vision_model?[{id:'douyin-vision',label:'图片理解模型',enabled:true,mode:'openai-compatible',endpoint,
         apiKey:bot.ai.api_key,model:bot.ai.vision_model,useForMain:false,useForCompaction:false,useForAlter:false,useForVision:true}]:[])],
-    mainMaxTokens: 4096, mainTimeout: 120000, mainResponseFormat: 'json-object',
+    mainMaxTokens: 0, mainTimeout: 120000, mainResponseFormat: 'json-object',
     vision: { enabled: !!bot.ai.vision_model,mode:'sidecar' }, compaction: { enabled: true }, embedding: { enabled: false },
   },
   runtime: {

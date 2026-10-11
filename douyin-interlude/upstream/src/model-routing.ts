@@ -183,7 +183,7 @@ function normalizeProvider(provider: ProviderConfig): ProviderConfig {
     apiKey: provider.apiKey ?? '', model: provider.model ?? '',
     temperature: provider.temperature ?? (zhipuOfficial ? 1 : 0.8),
     topP: provider.topP ?? (zhipuOfficial ? 0.95 : 1),
-    maxTokens: provider.maxTokens ?? 4096,
+    maxTokens: provider.maxTokens ?? 0,
     timeout: provider.timeout ?? (zhipuOfficial ? 45_000 : 60_000),
     responseFormat: provider.responseFormat ?? 'json-object',
     extraHeaders: provider.extraHeaders ?? '', extraBody: provider.extraBody ?? '',

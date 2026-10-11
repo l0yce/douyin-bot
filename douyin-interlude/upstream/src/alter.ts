@@ -18,7 +18,7 @@ export const DEFAULT_ALTER_SYSTEM_CONFIG: AlterSystemConfig = {
   model: '',
   temperature: 0.3,
   topP: 1,
-  maxTokens: 400,
+  maxTokens: 0,
   timeout: 30_000,
   prompt: '',
 }

@@ -39,9 +39,8 @@ DEFAULTS: dict[str, Any] = {
         "api_key": "",
         "model": "deepseek-chat",
         "temperature": 1.0,
-        "max_tokens": 300,
-        # 视觉（思考型）模型单独的 token 预算：reasoning 和正文共用额度，太小正文会空
-        "vision_max_tokens": 1000,
+        "max_tokens": "",
+        "vision_max_tokens": "",
         "timeout_seconds": 90,
         "max_retries": 2,
         "vision_model": "",

@@ -32,8 +32,8 @@
     "api_key": "",
     "model": "YOUR_MODEL",
     "temperature": 1.0,
-    "max_tokens": 300,
-    "vision_max_tokens": 1000,
+    "max_tokens": "",
+    "vision_max_tokens": "",
     "timeout_seconds": 90,
     "max_retries": 2,
     "vision_model": ""

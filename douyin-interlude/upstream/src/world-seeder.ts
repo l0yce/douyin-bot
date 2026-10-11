@@ -35,7 +35,7 @@ export interface WorldSeederRuntime {
 
 export const DEFAULT_WORLD_SEEDER_RUNTIME: WorldSeederRuntime = {
   enabled: false, cadenceMinutes: 45, maxPending: 4, dailyCap: 4,
-  maxHorizonHours: 72, temperature: 0.9, maxTokens: 1_000, timeout: 60_000,
+  maxHorizonHours: 72, temperature: 0.9, maxTokens: 0, timeout: 60_000,
 }
 
 /** 提供商不再单独配置：模型中心的连接行勾选“用于世界播种”（useForWorldSeeding）
@@ -56,7 +56,7 @@ export function resolveWorldSeederRuntime(value: unknown, provider?: ProviderCon
     dailyCap: clamp(record.dailyCap, 1, 20, DEFAULT_WORLD_SEEDER_RUNTIME.dailyCap),
     maxHorizonHours: clamp(record.maxHorizonHours, 1, 336, DEFAULT_WORLD_SEEDER_RUNTIME.maxHorizonHours),
     temperature: Math.max(0, Math.min(2, Number(record.temperature) || DEFAULT_WORLD_SEEDER_RUNTIME.temperature)),
-    maxTokens: clamp(record.maxTokens, 256, 8_192, DEFAULT_WORLD_SEEDER_RUNTIME.maxTokens),
+    maxTokens: clamp(record.maxTokens, 0, 8_192, DEFAULT_WORLD_SEEDER_RUNTIME.maxTokens),
     timeout: clamp(record.timeout, 5_000, 300_000, DEFAULT_WORLD_SEEDER_RUNTIME.timeout),
   }
 }

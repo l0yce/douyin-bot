@@ -23,7 +23,7 @@ const defaultProvider: ProviderConfig = {
   model: '',
   temperature: 0.8,
   topP: 1,
-  maxTokens: 4096,
+  maxTokens: 0,
   timeout: 60_000,
   responseFormat: 'json-object',
   extraHeaders: '',
@@ -46,6 +46,7 @@ const ProviderIdentity = Schema.object({
 })
 
 const ProviderAssignments = Schema.object({
+  maxTokens: Schema.natural().min(0).max(100_000).default(0).description('此连接的最大输出 token 数，可留空。'),
   useForMain: Schema.boolean().default(true).description('用于主叙事。'),
   useForCompaction: Schema.boolean().default(true).description('用于后台压缩。'),
   useForAlter: Schema.boolean().default(true).description('用于 Alter 分析。'),
@@ -148,7 +149,7 @@ const Model: Schema<ModelConfig> = Schema.object({
   providers: Schema.array(Provider.collapse(true)).default([defaultProvider]).description('新增连接后填写 Key、模型名，再勾选用途。'),
   mainTemperature: Schema.number().min(0).max(2).default(0.8).description('主叙事采样温度。'),
   mainTopP: Schema.number().min(0).max(1).default(1).description('主叙事 top-p。'),
-  mainMaxTokens: Schema.natural().min(0).max(100_000).default(4096).description('主叙事最大输出 token 数。'),
+  mainMaxTokens: Schema.natural().min(0).max(100_000).default(0).description('主叙事最大输出 token 数，可留空。'),
   mainTimeout: Schema.natural().min(1_000).max(300_000).default(60_000).role('ms').description('主叙事请求超时，单位毫秒。'),
   mainResponseFormat: Schema.union(['json-object', 'prompt-only']).default('json-object').description('主叙事输出格式；不支持 JSON mode 时选 prompt-only。'),
   mainStreamingMode: Schema.union(['off', 'experimental']).default('off').description('实验性私聊首泡加速；仅 JSON 模式。'),
@@ -184,14 +185,14 @@ const Model: Schema<ModelConfig> = Schema.object({
   compaction: (Schema.object({
     enabled: Schema.boolean().default(true).description('启用后台剧本压缩与长期事实提取。'),
     temperature: Schema.number().min(0).max(2).default(0.3).description('压缩采样温度；建议保持较低以提高稳定性。'),
-    maxTokens: Schema.natural().min(0).max(100_000).default(2048).description('压缩响应的最大 token 数。'),
+    maxTokens: Schema.natural().min(0).max(100_000).default(0).description('压缩响应的最大 token 数，可留空。'),
     timeout: Schema.natural().min(1_000).max(300_000).default(60_000).role('ms').description('压缩请求超时，单位毫秒。'),
     topP: Schema.number().min(0).max(1).default(1).description('压缩请求的核采样概率。'),
     responseFormat: Schema.union(['json-object', 'prompt-only']).default('json-object').description('压缩请求的 JSON 模式；不支持时改为 prompt-only。'),
     mainPrompt: Schema.string().role('textarea').default('Compress completed scenes into concise continuity notes while preserving causality, promises, unresolved matters, and gradual character change.').description('压缩任务指令：定义摘要、事实和状态变更的提取目标。'),
     fixedPrompt: Schema.string().role('textarea').default('').description('压缩器必须遵守的长期规则。'),
     stylePrompt: Schema.string().role('textarea').default('Concise, factual, chronological, and concrete.').description('压缩结果的表达风格。'),
-  }) as unknown as Schema<CompactionConfig>).default({ enabled: true, modelId: '', providerId: '', model: '', temperature: 0.3, topP: 1, maxTokens: 2048, timeout: 60_000, responseFormat: 'json-object', mainPrompt: 'Compress completed scenes into concise continuity notes while preserving causality, promises, unresolved matters, and gradual character change.', fixedPrompt: '', stylePrompt: 'Concise, factual, chronological, and concrete.' }).description('高级：后台压缩与 Preplan 共用设置；一般保持默认即可。').collapse(true),
+  }) as unknown as Schema<CompactionConfig>).default({ enabled: true, modelId: '', providerId: '', model: '', temperature: 0.3, topP: 1, maxTokens: 0, timeout: 60_000, responseFormat: 'json-object', mainPrompt: 'Compress completed scenes into concise continuity notes while preserving causality, promises, unresolved matters, and gradual character change.', fixedPrompt: '', stylePrompt: 'Concise, factual, chronological, and concrete.' }).description('高级：后台压缩与 Preplan 共用设置；一般保持默认即可。').collapse(true),
 })
 
 const RestWindowSchema: Schema<RestWindow> = Schema.object({
@@ -293,7 +294,7 @@ const AlterSystem: Schema<AlterSystemConfig> = Schema.object({
   maxIntensity: Schema.number().min(1).max(3).step(0.1).default(2).description('触发值超过阈值时允许的最大情绪偏移强度。'),
   temperature: Schema.number().min(0).max(2).step(0.1).default(0.3).description('侧端分析温度。较低值能保持描述稳定而不过度发挥。'),
   topP: Schema.number().min(0).max(1).step(0.05).default(1).description('侧端分析 top_p。'),
-  maxTokens: Schema.natural().min(64).max(2_000).default(400).description('侧端分析最大输出 token；只需要一到两句话。'),
+  maxTokens: Schema.natural().min(0).max(2_000).default(0).description('侧端分析最大输出 token，可留空。'),
   timeout: Schema.natural().min(1_000).max(120_000).default(30_000).role('ms').description('侧端分析超时。失败时保留累计值，稍后重试。'),
   prompt: Schema.string().role('textarea').default('').description('侧端分析的附加要求；不能覆盖固定的 JSON、隐私和非指令化约束。'),
 }).collapse(true)
@@ -536,7 +537,7 @@ export const Config: Schema<InterludeConfig> = Schema.object({
     dailyCap: Schema.natural().min(1).max(20).default(4).description('每 24 小时注入上限（推荐 1~4；高重要性每天至多 1 条）。'),
     maxHorizonHours: Schema.natural().min(1).max(336).default(72).description('事件最远发生时限（小时）。'),
     temperature: Schema.number().min(0).max(2).default(0.9).description('生成温度。'),
-    maxTokens: Schema.natural().min(256).max(8_192).default(1_000).description('单次输出预算（tokens）。'),
+    maxTokens: Schema.natural().min(0).max(8_192).default(0).description('单次输出预算（tokens），可留空。'),
     timeout: Schema.natural().min(5_000).max(300_000).default(60_000).description('请求超时（毫秒）。'),
   }).collapse(true).description('【扩展 15】世界播种器：外部事件的生成与注入（未选模型即关闭）。'),
   qzone: Schema.object({

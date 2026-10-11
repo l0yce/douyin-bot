@@ -30,10 +30,8 @@ class AIClient:
         self.model = str(ai["model"]).strip()
         self.vision_model = str(ai.get("vision_model") or "").strip() or self.model
         self.temperature = float(ai.get("temperature", 1.0))
-        self.max_tokens = int(ai.get("max_tokens", 300))
-        # 思考型视觉模型（GLM-4.5V）的 reasoning_tokens 和正文共用 max_tokens 预算：
-        # 预算太小思考就吃光额度、正文为空，视觉调用单独给更大的预算
-        self.vision_max_tokens = int(ai.get("vision_max_tokens", 1000) or 1000)
+        self.max_tokens = self._token_limit(ai.get("max_tokens"))
+        self.vision_max_tokens = self._token_limit(ai.get("vision_max_tokens"))
         self.timeout = float(ai.get("timeout_seconds", 90))
         self.max_retries = int(ai.get("max_retries", 2))
         if not self.api_key:
@@ -50,6 +48,18 @@ class AIClient:
             return f"{base}/chat/completions"
         return f"{base}/v1/chat/completions"
 
+    @staticmethod
+    def _token_limit(value):
+        if value is None or value == "" or value == 0:
+            return None
+        try:
+            limit = int(value)
+        except (ValueError, TypeError) as exc:
+            raise AIError("最大 Token 数必须留空或填写正整数") from exc
+        if isinstance(value, bool) or limit <= 0 or str(limit) != str(value).strip():
+            raise AIError("最大 Token 数必须留空或填写正整数")
+        return limit
+
     def chat(self, messages: list[dict[str, str]], image_b64: str | None = None,
              model: str | None = None, max_tokens: int | None = None) -> str:
         """messages 为普通文本消息。若 image_b64 非空，则把最后一条 user 消息
@@ -58,14 +68,15 @@ class AIClient:
         payload_messages: list[dict[str, Any]] = messages
         if image_b64:
             payload_messages = self._attach_image(messages, image_b64)
-        token_budget = max_tokens or (self.vision_max_tokens if image_b64 else self.max_tokens)
+        token_budget = self._token_limit(max_tokens) if max_tokens is not None else (self.vision_max_tokens if image_b64 else self.max_tokens)
         payload = {
             "model": use_model,
             "messages": payload_messages,
             "temperature": self.temperature,
-            "max_tokens": token_budget,
             "stream": False,
         }
+        if token_budget is not None:
+            payload["max_tokens"] = token_budget
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         last_error: Exception | None = None
 

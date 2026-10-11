@@ -60,7 +60,8 @@ export function anthropicBody(body: Record<string, any>, provider: AnthropicOpti
   }
   if (provider.anthropicCache && system.length) system[system.length - 1].cache_control = { type: 'ephemeral' }
   const maxTokens = Number(body.max_tokens ?? provider.maxTokens)
-  return { ...rest, stream: false, max_tokens: Number.isFinite(maxTokens) && maxTokens > 0 ? Math.floor(maxTokens) : 4096,
+  if (!Number.isFinite(maxTokens) || maxTokens <= 0) throw new Error('Anthropic Messages 协议要求填写正整数最大输出 Token 数。')
+  return { ...rest, stream: false, max_tokens: Math.floor(maxTokens),
     // Claude models may reject temperature + top_p together. Use temperature only.
     ...(typeof body.temperature === 'number' && !['enabled', 'adaptive'].includes(body.thinking?.type) ? { temperature: Math.max(0, Math.min(1, body.temperature)) } : {}),
     system, messages: turns }
