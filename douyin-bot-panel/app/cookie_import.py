@@ -49,11 +49,14 @@ def convert(content):
     if not entries or len(entries) > 2000:
         raise ValueError('Cookie 数量应为 1 至 2000 条。')
     result, seen = [], set()
-    foreign = expired = 0
+    foreign = expired = empty_name = 0
     for entry in entries:
         if not isinstance(entry, dict):
             raise ValueError('Cookie 数组中存在无效条目，请重新导出。')
         name, value = entry.get('name'), entry.get('value')
+        if name is None or isinstance(name, str) and not name.strip():
+            empty_name += 1
+            continue
         if not isinstance(name, str) or not NAME.fullmatch(name) or not isinstance(value, str):
             raise ValueError('每条 Cookie 都需要有效的 name 和字符串 value。')
         if any(ord(c) < 32 or ord(c) == 127 for c in value):
@@ -102,8 +105,10 @@ def convert(content):
             raise ValueError('Cookie sameSite 字段不受支持，请重新导出。')
         result.append(cookie)
     if not result:
-        raise ValueError('没有可导入的抖音 Cookies，可能已过期或属于其他网站。')
+        raise ValueError('没有可导入的抖音 Cookies，可能名称为空、已过期或属于其他网站。')
     warnings = []
+    if empty_name:
+        warnings.append(f'已忽略 {empty_name} 条 name 为空的 Cookies。')
     if foreign:
         warnings.append(f'已忽略 {foreign} 条其他网站的 Cookies。')
     if expired:

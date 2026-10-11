@@ -48,6 +48,26 @@ class CookieConversion(unittest.TestCase):
                     cookie_import.convert(content)
                 self.assertNotIn(secret, str(raised.exception))
 
+    def test_empty_names_are_filtered_without_dropping_empty_values(self):
+        cookies, warnings = cookie_import.convert(json.dumps([
+            {'name':'', 'value':'offline-sensitive-sentinel'},
+            {'name':'  ', 'value':'offline-sensitive-sentinel'},
+            {'name':None, 'value':'offline-sensitive-sentinel'},
+            {'value':'offline-sensitive-sentinel'},
+            {'name':'sessionid', 'value':'offline'},
+            {'name':'empty_value', 'value':''}]))
+        self.assertEqual([c['name'] for c in cookies], ['sessionid', 'empty_value'])
+        self.assertEqual(cookies[1]['value'], '')
+        self.assertEqual(warnings, ['已忽略 4 条 name 为空的 Cookies。'])
+        self.assertNotIn('offline-sensitive-sentinel', str(warnings))
+        cookies, warnings = cookie_import.convert('=offline; sessionid=offline; =ignored')
+        self.assertEqual(len(cookies), 1)
+        self.assertEqual(warnings, ['已忽略 2 条 name 为空的 Cookies。'])
+
+    def test_only_empty_names_are_rejected(self):
+        with self.assertRaisesRegex(ValueError, '没有可导入'):
+            cookie_import.convert('[{"name":"","value":"offline"}]')
+
 
 class CookieImportAPI(unittest.TestCase):
     def setUp(self):
@@ -63,6 +83,8 @@ class CookieImportAPI(unittest.TestCase):
         spec = importlib.util.spec_from_file_location('cookie_test_panel', ROOT/'douyin-bot-panel/app/app.py')
         self.panel = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.panel)
+        self.assertEqual(self.panel.BOT_DIR.resolve(), self.bot.resolve(),
+                         'Cookie import tests require an isolated bot directory')
 
     def tearDown(self):
         self.env.stop()
@@ -80,6 +102,7 @@ class CookieImportAPI(unittest.TestCase):
         with patch.object(self.panel, 'systemctl') as command:
             self.assertEqual(self.request('sessionid=offline', auth=False).status_code,401)
             self.assertEqual(self.request('[broken').status_code,400)
+            self.assertEqual(self.request('[{"name":"","value":"offline"}]').status_code,400)
             command.assert_not_called()
         self.assertFalse((self.bot/'state/cookies.json').exists())
 
@@ -94,6 +117,15 @@ class CookieImportAPI(unittest.TestCase):
         self.assertEqual(json.loads(cf.read_text()),json.loads((self.bot/'state/douyin_storage.json').read_text())['cookies'])
         self.assertTrue((self.bot/'state/cookies.json.import-pending').exists())
         if os.name!='nt':self.assertEqual(cf.stat().st_mode & 0o777,0o600)
+
+    def test_import_filters_empty_names_and_reports_count(self):
+        with patch.object(self.panel, 'unit_properties', return_value={'ActiveState':'inactive'}):
+            response = self.request('=offline-sensitive-sentinel; sessionid=offline')
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertNotIn('offline-sensitive-sentinel', response.text)
+        self.assertIn('name 为空', response.text)
+        saved = json.loads((self.bot/'state/cookies.json').read_text())
+        self.assertEqual([c['name'] for c in saved], ['sessionid'])
 
     def test_discovery_and_stop_failure_preserve_existing_files(self):
         cf=self.bot/'state/cookies.json';cf.write_text('original')
