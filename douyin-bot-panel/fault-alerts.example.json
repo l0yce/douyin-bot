@@ -1,0 +1,9 @@
+{
+  "enabled": false,
+  "sender": "",
+  "recipient": "",
+  "auth_code": "",
+  "failure_minutes": 3,
+  "repeat_minutes": 120,
+  "recovery": true
+}

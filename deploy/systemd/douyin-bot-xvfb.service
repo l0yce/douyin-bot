@@ -1,0 +1,11 @@
+[Unit]
+Description=Virtual display for Douyin browser
+Before=douyin-friend-ai-bot.service
+
+[Service]
+ExecStart=/usr/bin/Xvfb :99 -screen 0 1536x864x24 -nolisten tcp
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

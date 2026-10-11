@@ -1,0 +1,12 @@
+{
+  "name": "抖音 · 消息值班台",
+  "short_name": "消息值班台",
+  "description": "查看抖音聊天、发送结果与角色剧情",
+  "start_url": "/botpanel/",
+  "scope": "/botpanel/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f5f8",
+  "theme_color": "#17263a",
+  "icons": [{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]
+}

@@ -1,0 +1,113 @@
+{
+  "account": {
+    "chat_url": "https://www.douyin.com/chat",
+    "storage_state": "state/douyin_storage.json",
+    "cookies_file": "state/cookies.json",
+    "engine": "firefox",
+    "driver": "playwright",
+    "headless": false,
+    "profile_dir": "state/browser_profile_firefox",
+    "user_agent": "",
+    "locale": "zh-CN",
+    "timezone": "Asia/Shanghai",
+    "viewport": {
+      "width": 1536,
+      "height": 864
+    },
+    "page_timeout_ms": 15000,
+    "login_timeout_seconds": 300
+  },
+  "owner": {
+    "_说明": "你自己的抖音号（可选但建议填）。填了之后机器人能识别「点开会话时抖音误把本人当对方返回」的情况，不会把你的号当成好友来回复。",
+    "douyin_id": "",
+    "nickname": ""
+  },
+  "whitelist": {
+    "friends": [],
+    "exact_match": true
+  },
+  "ai": {
+    "base_url": "https://api.example.com/v1",
+    "api_key": "",
+    "model": "YOUR_MODEL",
+    "temperature": 1.0,
+    "max_tokens": 300,
+    "vision_max_tokens": 1000,
+    "timeout_seconds": 90,
+    "max_retries": 2,
+    "vision_model": ""
+  },
+  "reply": {
+    "enabled": true,
+    "max_reply_chars": 200,
+    "history_messages": 8,
+    "typing_delay_seconds": {
+      "min": 2,
+      "max": 7
+    },
+    "max_per_friend_per_hour": 30,
+    "max_per_friend_per_day": 100,
+    "skip_non_text": true,
+    "repeat_same_text_after_minutes": 30,
+    "split_long_reply": {
+      "enabled": true,
+      "min_chars": 30,
+      "max_segments": 3,
+      "probability": 0.6,
+      "gap_seconds": {
+        "min": 2,
+        "max": 5
+      }
+    },
+    "extra_wait_before_reply_seconds": {
+      "min": 3,
+      "max": 10
+    },
+    "images": {
+      "enabled": true,
+      "policy": "vision"
+    },
+    "videos": {
+      "enabled": true
+    },
+    "conversation_context": {
+      "enabled": true,
+      "history_messages": 7,
+      "cancel_on_manual": true
+    },
+    "video_comments": {
+      "enabled": true,
+      "count": 5,
+      "max_comment_chars": 30,
+      "cache_hours": 1,
+      "timeout_seconds": 60
+    }
+  },
+  "poll": {
+    "cycle_min_seconds": 15,
+    "cycle_max_seconds": 35,
+    "reload_every_cycles": 10,
+    "startup_warmup_seconds": 5
+  },
+  "prompts": {
+    "system_prompt": "",
+    "system_prompt_file": "config/persona.md",
+    "friend_notes": {},
+    "user_template": "",
+    "image_user_template": ""
+  },
+  "log": {
+    "audit_file": "logs/reply_audit.jsonl",
+    "runtime_file": "logs/runtime.log",
+    "screenshot_dir": "logs/screenshots"
+  },
+  "risk": {
+    "consecutive_failures_to_pause": 6,
+    "pause_minutes_on_captcha": 30,
+    "recheck_login_every_cycles": 12
+  },
+  "interlude": {
+    "enabled": true,
+    "connection_file": "../douyin-interlude/bridge-config.json"
+  }
+}

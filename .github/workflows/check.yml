@@ -1,0 +1,25 @@
+name: Public release checks
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python scripts/check_public_release.py
+      - run: python -m compileall -q douyin-friend-ai-bot/src douyin-bot-panel/app scripts tests
+      - run: pip install -r douyin-friend-ai-bot/requirements.txt -r douyin-bot-panel/requirements.txt
+      - run: python -m unittest discover -s tests -v
+      - run: npm ci
+        working-directory: douyin-interlude
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: 'true'
+      - run: npm run build && npm run check
+        working-directory: douyin-interlude
+      - run: python -m unittest discover -s tests -v
+      - run: bash -n scripts/install.sh douyin-friend-ai-bot/scripts/discover_friends.sh

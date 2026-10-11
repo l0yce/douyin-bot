@@ -1,0 +1,10 @@
+[Unit]
+Description=Douyin companion fault email monitor
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@ROOT@/douyin-bot-panel
+ExecStart=@ROOT@/douyin-bot-panel/venv/bin/python app/fault_alerts.py
+TimeoutStartSec=90
+UMask=0077

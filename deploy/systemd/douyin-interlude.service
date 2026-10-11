@@ -1,0 +1,18 @@
+[Unit]
+Description=Douyin HDS Interlude bridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@ROOT@/douyin-interlude
+ExecStart=@NODE@ --max-old-space-size=128 bridge.cjs
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=15
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

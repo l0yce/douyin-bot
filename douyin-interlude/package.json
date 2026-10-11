@@ -1,0 +1,22 @@
+{
+  "dependencies": {
+    "@cordisjs/plugin-http": "1.5.2",
+    "@koishijs/plugin-database-sqlite": "4.7.0",
+    "koishi": "4.18.11",
+    "qface": "1.4.1"
+  },
+  "name": "douyin-bot-interlude",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check.cjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

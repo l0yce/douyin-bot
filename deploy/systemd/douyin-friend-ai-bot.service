@@ -1,0 +1,17 @@
+[Unit]
+Description=Douyin whitelist AI companion
+After=network-online.target douyin-bot-xvfb.service
+Wants=network-online.target douyin-bot-xvfb.service
+
+[Service]
+Type=simple
+WorkingDirectory=@ROOT@/douyin-friend-ai-bot
+ExecStart=@ROOT@/douyin-friend-ai-bot/.venv/bin/python src/main.py --config config/config.json
+Environment=PLAYWRIGHT_BROWSERS_PATH=@ROOT@/douyin-friend-ai-bot/ms-playwright
+Environment=DISPLAY=:99
+Restart=on-failure
+RestartSec=15
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

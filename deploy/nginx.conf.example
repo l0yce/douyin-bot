@@ -1,0 +1,11 @@
+# Add this location inside your existing HTTPS server block.
+# Use your own domain and certificates. The panel API stays on loopback.
+location /botpanel/ {
+    proxy_pass http://127.0.0.1:8790/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_read_timeout 300s;
+    client_max_body_size 8m;
+    add_header Cache-Control "no-store";
+}

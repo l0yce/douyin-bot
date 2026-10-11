@@ -1,0 +1,10 @@
+const assert = require('node:assert/strict');
+const hdsi = require('../upstream/lib');
+assert.equal(hdsi.name, 'hds-interlude');
+assert.equal(typeof hdsi.apply, 'function');
+assert(hdsi.Config);
+const config = hdsi.Config(require('../hdsi-admin.cjs').douyinOnly({}));
+assert.equal(config.onebot.enabled, false);
+assert.equal(config.chatActions.enabled, false);
+assert.equal(config.model.audio.enabled, false);
+console.log('PASS: vendored engine loads, configuration schema works, non-Douyin channels disabled');

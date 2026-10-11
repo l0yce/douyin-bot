@@ -1,0 +1,14 @@
+[Unit]
+Description=Douyin companion control panel
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@ROOT@/douyin-bot-panel/app
+ExecStart=@ROOT@/douyin-bot-panel/venv/bin/uvicorn app:app --host 127.0.0.1 --port 8790
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

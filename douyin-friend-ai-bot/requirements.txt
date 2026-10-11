@@ -1,0 +1,2 @@
+playwright==1.62.0
+httpx[socks]==0.28.1

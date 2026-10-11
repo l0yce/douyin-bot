@@ -1,0 +1,28 @@
+{
+  "port": 18765,
+  "token": "GENERATED_BY_INIT",
+  "statePath": "data/bridge-state.json",
+  "databasePath": "data/interlude.db",
+  "runtimePhase": "running",
+  "allowProactiveMessages": false,
+  "autoAdvanceEnabled": true,
+  "autoAdvanceIntervalMinutes": 120,
+  "story": {
+    "characterName": "小禾",
+    "characterProfile": "这是虚构示例角色。请在本地填写你希望使用的角色设定。",
+    "relationship": "依据实际聊天建立关系，不编造共同经历。",
+    "world": "现代日常生活。",
+    "style": "自然简短地接话，不猜测未读取到的内容。"
+  },
+  "hdsiOverrides": {
+    "browser": {
+      "enabled": false
+    },
+    "agency": {
+      "proactiveDailyCap": 2
+    },
+    "worldSeeder": {
+      "enabled": false
+    }
+  }
+}
