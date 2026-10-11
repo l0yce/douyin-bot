@@ -388,11 +388,19 @@ def bot_action(action: str, _: None = Depends(require_token)):
 def _bot_action(action: str):
     if action not in {"start", "stop", "restart"}:
         raise HTTPException(status_code=404, detail="未知操作")
+    prior_intent = fault_alerts.read(fault_alerts.CONTROL, {})
+    fault_alerts.record_run_intent(action != "stop")
     if action == "start":
         systemctl("start", XVFB_UNIT)
         code, out = systemctl("start", BOT_UNIT)
     elif action == "stop":
-        code, out = systemctl("stop", BOT_UNIT)
+        try:
+            code, out = systemctl("stop", BOT_UNIT)
+        except Exception:
+            fault_alerts.atomic(fault_alerts.CONTROL, prior_intent)
+            raise
+        if code:
+            fault_alerts.atomic(fault_alerts.CONTROL, prior_intent)
         systemctl("stop", XVFB_UNIT)
     else:
         code, out = systemctl("restart", BOT_UNIT)

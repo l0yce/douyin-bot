@@ -18,6 +18,7 @@ import httpx
 ROOT = pathlib.Path(os.environ.get('PANEL_DIR', pathlib.Path(__file__).resolve().parents[1]))
 CONFIG = ROOT / 'data/fault-alerts.json'
 STATE = ROOT / 'data/fault-alerts-state.json'
+CONTROL = ROOT / 'data/fault-alerts-control.json'
 BOT = pathlib.Path(os.environ.get('BOT_DIR', ROOT.parent / 'douyin-friend-ai-bot'))
 DEFAULT = dict(enabled=False, sender='', recipient='', auth_code='', failure_minutes=3, repeat_minutes=120, recovery=True)
 LABELS = {'service': '机器人服务异常或频繁重启', 'proxy': '代理出口无法连接抖音', 'interlude': '幕间服务未就绪',
@@ -127,6 +128,33 @@ def command(args):
     return result.stdout
 
 
+def record_run_intent(running):
+    """Persist panel intent separately from watchdog state; bind stop to one run."""
+    invocation = ''
+    if not running:
+        try:
+            invocation = command(['systemctl', 'show', 'douyin-friend-ai-bot.service',
+                                  '-p', 'InvocationID', '--value']).strip()
+        except Exception:
+            pass
+    atomic(CONTROL, {'desired_running': bool(running),
+                     'stopped_invocation': invocation, 'changed_at': time.time()})
+
+
+def planned_stop(props, control):
+    active = props.get('ActiveState')
+    # Also recognize a successful direct `systemctl stop`, outside the panel.
+    if active == 'inactive' and props.get('Result') == 'success':
+        return True
+    if control.get('desired_running') is not False:
+        return False
+    invocation = props.get('InvocationID') or ''
+    stopped = control.get('stopped_invocation') or ''
+    if stopped:
+        return not invocation or invocation == stopped
+    return active in ('inactive', 'deactivating')
+
+
 def journal_health(entries, now, started):
     """Scope caller to the current service invocation; never treat silence as recovery."""
     rounds = []
@@ -161,7 +189,14 @@ def collect(state=None):
     state = state if state is not None else {}
     now = time.time()
     props = dict(line.split('=', 1) for line in command(['systemctl', 'show', 'douyin-friend-ai-bot.service',
-                 '-p', 'ActiveState', '-p', 'InvocationID', '-p', 'ActiveEnterTimestampMonotonic', '-p', 'NRestarts']).splitlines() if '=' in line)
+                 '-p', 'ActiveState', '-p', 'Result', '-p', 'InvocationID', '-p', 'ActiveEnterTimestampMonotonic', '-p', 'NRestarts']).splitlines() if '=' in line)
+    state['observed_invocation'] = props.get('InvocationID') or ''
+    state['monitoring_paused'] = planned_stop(props, read(CONTROL, {}))
+    if state['monitoring_paused']:
+        state['pause_reason'] = '机器人已正常停止，暂停故障检测'
+        state['restart_history'] = []
+        return {}
+    state.pop('pause_reason', None)
     faults = {'service': props.get('ActiveState') != 'active'}
     count = int(props.get('NRestarts') or 0)
     history = [row for row in state.get('restart_history', []) if row[0] >= now - 900]
@@ -227,6 +262,18 @@ def collect(state=None):
 
 
 def transition(state, faults, cfg, now, deliver=send):
+    control = read(CONTROL, {})
+    stopped = control.get('stopped_invocation')
+    if control.get('desired_running') is False and stopped and stopped == state.get('observed_invocation'):
+        state['monitoring_paused'] = True
+        state['pause_reason'] = '机器人已正常停止，暂停故障检测'
+    if state.get('monitoring_paused'):
+        # A deliberate stop is neither a new fault nor a recovery notification.
+        state['incidents'] = {}
+        state['restart_history'] = []
+        state.pop('send_error', None)
+        state.update(checked_at=now, faults={}, enabled=cfg['enabled'])
+        return state
     incidents = state.setdefault('incidents', {})
     pending = []
     for key, bad in faults.items():
@@ -268,6 +315,7 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         cfg = settings()
         state = read(STATE, {})
+        state['monitoring_paused'] = False
         try:
             faults = {**state.get('faults', {}), **collect(state)}
             faults['monitor'] = False
