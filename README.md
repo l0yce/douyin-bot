@@ -1,5 +1,7 @@
 # douyin-bot · 抖音 AI 好友助手
 
+> **没有服务器？可以使用 Windows 桌面版。** [douyin-bot-desktop](https://github.com/l0yce/douyin-bot-desktop) 将机器人、剧情记忆和管理功能集成到桌面界面，适合没有服务器、希望在自己电脑上使用的用户。[下载安装包](https://github.com/l0yce/douyin-bot-desktop/releases/tag/v2026.10.12-preview.1)，按桌面版 README 完成配置即可。使用期间需要保持电脑联网、唤醒并运行程序。
+
 [![公开版检查](https://github.com/l0yce/douyin-bot/actions/workflows/check.yml/badge.svg)](https://github.com/l0yce/douyin-bot/actions/workflows/check.yml)
 
 把 **抖音私信机器人、幕间系统和网页控制面板** 放在一起的项目。
