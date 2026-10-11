@@ -46,6 +46,7 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 SEC_UID_RE = re.compile(r"^MS4wLjAB[0-9A-Za-z_-]+$")
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+PROCESS_LOCK = threading.Lock()
 
 
 # ---------------- 鉴权 ----------------
@@ -377,7 +378,14 @@ async def status(_: None = Depends(require_token)):
 
 
 @app.post("/api/bot/{action}")
-async def bot_action(action: str, _: None = Depends(require_token)):
+def bot_action(action: str, _: None = Depends(require_token)):
+    with PROCESS_LOCK:
+        if _discover_state['running']:
+            raise HTTPException(status_code=409, detail='发现脚本正在运行，请结束后再控制机器人。')
+        return _bot_action(action)
+
+
+def _bot_action(action: str):
     if action not in {"start", "stop", "restart"}:
         raise HTTPException(status_code=404, detail="未知操作")
     if action == "start":
@@ -462,8 +470,8 @@ async def put_whitelist(body: dict, _: None = Depends(require_token)):
 
 
 @app.post("/api/discover/run")
-async def discover_run(_: None = Depends(require_token)):
-    with _discover_lock:
+def discover_run(_: None = Depends(require_token)):
+    with PROCESS_LOCK, _discover_lock:
         if _discover_state["running"]:
             raise HTTPException(status_code=409, detail="发现脚本正在运行中")
         if not (BOT_DIR / "scripts" / "discover_friends.sh").exists():
@@ -472,6 +480,89 @@ async def discover_run(_: None = Depends(require_token)):
                                finished_at=None, returncode=None)
         threading.Thread(target=_discover_worker, daemon=True).start()
     return {"ok": True}
+
+
+# ---------------- Cookie 导入（不回显凭据） ----------------
+import cookie_import
+
+
+def _cookie_target(value):
+    target = Path(value)
+    if not target.is_absolute():
+        target = BOT_DIR / target
+    target = target.resolve()
+    if not target.is_relative_to(BOT_DIR.resolve() / 'state'):
+        raise HTTPException(status_code=400, detail='登录文件须位于机器人 state 目录，请检查账号配置路径。')
+    return target
+
+
+def _private_write(target, data):
+    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, name = tempfile.mkstemp(prefix='.cookie-import-', dir=target.parent)
+    try:
+        with os.fdopen(fd, 'wb') as handle:
+            os.chmod(name, 0o600)
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(name, target)
+    finally:
+        if os.path.exists(name):
+            os.unlink(name)
+
+
+def _save_imported_cookies(cookies, warnings):
+    with PROCESS_LOCK, _discover_lock:
+        if _discover_state['running']:
+            raise HTTPException(status_code=409, detail='发现脚本正在运行，请结束后再导入 Cookies。')
+        account = read_config().get('account', {})
+        cf = _cookie_target(account.get('cookies_file') or 'state/cookies.json')
+        ss = _cookie_target(account.get('storage_state') or 'state/douyin_storage.json')
+        marker = cf.with_name(cf.name + '.import-pending')
+        if len({cf, ss, marker}) != 3:
+            raise HTTPException(status_code=400, detail='Cookie 文件与登录态文件路径不能相同。')
+        info = unit_properties(BOT_UNIT, ['ActiveState'])
+        if info.get('ActiveState') not in {'active', 'activating', 'reloading', 'inactive', 'failed', 'deactivating'}:
+            raise HTTPException(status_code=503, detail='无法确认机器人状态，未导入。请检查服务后重试。')
+        if info['ActiveState'] not in {'inactive', 'failed'}:
+            code, _ = systemctl('stop', BOT_UNIT)
+            if code or unit_properties(BOT_UNIT, ['ActiveState']).get('ActiveState') != 'inactive':
+                raise HTTPException(status_code=503, detail='机器人未能停止，未修改 Cookies。请手动停止后重试。')
+        originals = {p: p.read_bytes() if p.exists() else None for p in (cf, ss, marker)}
+        payloads = {cf: json.dumps(cookies, ensure_ascii=False).encode('utf-8'),
+                    ss: json.dumps({'cookies': cookies, 'origins': []}, ensure_ascii=False).encode('utf-8'),
+                    marker: b'panel-import-v1\n'}
+        try:
+            for target, data in payloads.items():
+                _private_write(target, data)
+        except OSError:
+            try:
+                for target, data in originals.items():
+                    if data is None:
+                        target.unlink(missing_ok=True)
+                    else:
+                        _private_write(target, data)
+            except OSError:
+                raise HTTPException(status_code=500, detail='导入写入失败且恢复未完成。机器人保持停止，请检查登录文件后再启动。') from None
+            raise HTTPException(status_code=500, detail='导入写入失败，已恢复原登录文件。机器人保持停止，请检查磁盘空间和权限。') from None
+        return {'ok': True, 'count': len(cookies), 'warnings': warnings,
+                'message': f'已转换并导入 {len(cookies)} 条抖音 Cookies。机器人保持停止，请点击“启动机器人”，再查看连接日志确认登录。'}
+
+
+@app.post('/api/cookies/import')
+async def import_cookies(request: Request, _: None = Depends(require_token)):
+    raw = bytearray()
+    async for chunk in request.stream():
+        raw.extend(chunk)
+        if len(raw) > cookie_import.MAX_BYTES * 2:
+            raise HTTPException(status_code=413, detail='请求过大，请只粘贴抖音网站的 Cookies。')
+    try:
+        body = json.loads(raw)
+        cookies, warnings = cookie_import.convert(body.get('content') if isinstance(body, dict) else None)
+    except (ValueError, UnicodeError, RecursionError) as error:
+        message = str(error) if type(error) is ValueError else '请求格式不正确，请重新粘贴 Cookies。'
+        raise HTTPException(status_code=400, detail=message) from None
+    return await asyncio.to_thread(_save_imported_cookies, cookies, warnings)
 
 
 @app.get("/api/discover")

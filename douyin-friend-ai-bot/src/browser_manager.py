@@ -294,6 +294,13 @@ class BrowserSession:
                             "或在带界面的电脑上运行 --login-qr 扫码登录一次"
                         )
                 self.page = await self.context.new_page()
+            # Panel imports replace the cookie jar once, including persistent profiles.
+            # Keep the marker on failure so the next launch retries the replacement.
+            marker = cf.with_name(cf.name + '.import-pending')
+            if login_source in ('auto', 'cookies') and marker.exists():
+                await self.context.clear_cookies()
+                await self.context.add_cookies(load_cookie_entries(cf))
+                marker.unlink()
         except Exception:
             await self.stop()
             raise

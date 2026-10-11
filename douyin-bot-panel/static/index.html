@@ -63,6 +63,7 @@ input:not([type=checkbox]),textarea,select{border:1px solid #cad4e2;border-radiu
 
 .conversation-form{margin-top:20px}.conversation-form fieldset{border:0;padding:0;margin:18px 0}.conversation-form .fld{max-width:420px}.conversation-form .story-check{min-height:44px;align-items:center}.conversation-form .hint{max-width:75ch}.event-state.takeover{color:#435570;background:#edf1f6}.context-save-row{display:flex;gap:10px;flex-wrap:wrap}
 .video-settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px}.video-settings-grid .fld{max-width:none}.video-settings-grid input{width:100%}@media(max-width:760px){.video-settings-grid{grid-template-columns:minmax(0,1fr)}}
+.connection-actions{display:flex;gap:10px;flex-wrap:wrap}.cookie-dialog textarea{width:100%;resize:vertical;min-height:180px;max-height:36vh;overflow-wrap:anywhere}.cookie-dialog .btnrow{justify-content:flex-end}.cookie-dialog .hint{margin-bottom:16px}.cookie-result{white-space:pre-line;color:var(--go)}@media(max-width:760px){.connection-actions button{min-height:44px}.cookie-dialog{max-height:calc(100dvh - 32px);width:calc(100vw - 32px)}.cookie-dialog textarea{font-size:16px;min-height:150px}}
 </style>
 </head>
 <body data-project="douyin">
@@ -82,7 +83,7 @@ input:not([type=checkbox]),textarea,select{border:1px solid #cad4e2;border-radiu
         <div class="stat"><span class="sl">开机自启</span><b id="st-enabled">—</b></div>
       </div>
       <div class="svc"><span>服务状态</span><b id="st-unit">—</b></div>
-      <div class="svc"><span>抖音连接</span><b id="st-chat">读取中</b></div><p id="st-chat-note" class="hint" role="status"></p><button type="button" class="small" data-go="logs">查看连接日志</button><div class="btnrow">
+      <div class="svc"><span>抖音连接</span><b id="st-chat">读取中</b></div><p id="st-chat-note" class="hint" role="status"></p><div class="connection-actions"><button type="button" class="small" data-go="logs">查看连接日志</button><button type="button" class="small" id="btn-import-cookies">导入 Cookies</button></div><div class="btnrow">
         <button class="primary" id="btn-start">启动机器人</button>
         <button class="danger" id="btn-stop">停止机器人</button>
         <button id="btn-restart">重启</button>
@@ -263,6 +264,17 @@ input:not([type=checkbox]),textarea,select{border:1px solid #cad4e2;border-radiu
 </div>
 
 <!-- 添加好友 -->
+<dialog id="cookie-dialog" class="cookie-dialog" aria-labelledby="cookie-title" aria-describedby="cookie-help">
+  <form id="cookie-form">
+    <h3 id="cookie-title">导入抖音 Cookies</h3>
+    <p id="cookie-help" class="hint">粘贴插件导出的完整 JSON，或开发者工具中 Cookie 请求头的值（name=value; …）。仅导入抖音网站的 Cookies。</p>
+    <p class="hint">导入时会停止机器人并替换旧登录 Cookies，完成后请手动启动。请确认复制的是配置中你自己的抖音账号；导入成功不代表登录仍有效。</p>
+    <div class="fld"><label class="flabel" for="cookie-content">完整 Cookie 内容</label><textarea id="cookie-content" rows="8" maxlength="1048576" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="在这里粘贴完整内容，不需要手动转换" required></textarea></div>
+    <p id="cookie-error" class="err-text" role="alert" hidden></p>
+    <p id="cookie-result" class="cookie-result" role="status" aria-live="polite" hidden></p>
+    <div class="btnrow"><button id="cookie-close" type="button">取消</button><button id="cookie-submit" class="primary" type="submit">转换并导入</button></div>
+  </form>
+</dialog>
 <div class="overlay" id="ov-add">
   <div class="modal">
     <h3>粘贴添加好友</h3>
@@ -467,6 +479,33 @@ async function botAction(a,confirmMsg){
 $("#btn-start").addEventListener("click",()=>botAction("start"));
 $("#btn-stop").addEventListener("click",()=>botAction("stop","确定停止机器人？"));
 $("#btn-restart").addEventListener("click",()=>botAction("restart","确定重启机器人？（会重开浏览器，Cookie 登录态保留）"));
+let cookieBusy=false;
+const cookieDialog=$('#cookie-dialog');
+function clearCookieForm(){
+ $('#cookie-content').value='';$('#cookie-content').disabled=false;
+ $('#cookie-error').textContent='';$('#cookie-error').hidden=true;
+ $('#cookie-result').textContent='';$('#cookie-result').hidden=true;
+ $('#cookie-submit').disabled=false;$('#cookie-submit').textContent='转换并导入';
+ $('#cookie-close').disabled=false;$('#cookie-close').textContent='取消';
+}
+$('#btn-import-cookies').onclick=()=>{clearCookieForm();cookieDialog.showModal();$('#cookie-content').focus()};
+$('#cookie-close').onclick=()=>{if(!cookieBusy)cookieDialog.close()};
+cookieDialog.addEventListener('cancel',e=>{if(cookieBusy)e.preventDefault()});
+cookieDialog.addEventListener('close',clearCookieForm);
+window.addEventListener('pagehide',()=>{$('#cookie-content').value=''});
+$('#cookie-form').addEventListener('submit',async e=>{
+ e.preventDefault();if(cookieBusy)return;
+ const content=$('#cookie-content').value;
+ if(new TextEncoder().encode(content).length>1048576){$('#cookie-error').textContent='内容超过 1 MB，请只复制抖音网站的 Cookies。';$('#cookie-error').hidden=false;return}
+ cookieBusy=true;$('#cookie-content').disabled=true;$('#cookie-submit').disabled=true;$('#cookie-close').disabled=true;
+ $('#cookie-submit').textContent='正在转换并导入…';$('#cookie-error').hidden=true;
+ try{
+  const result=await api('cookies/import',{method:'POST',body:JSON.stringify({content})});
+  $('#cookie-content').value='';$('#cookie-result').textContent=[result.message,...(result.warnings||[])].join('\n');$('#cookie-result').hidden=false;
+  $('#cookie-submit').textContent='已导入';$('#cookie-close').textContent='完成';toast('Cookies 已导入，机器人保持停止');
+ }catch(error){$('#cookie-error').textContent=error.message;$('#cookie-error').hidden=false;$('#cookie-content').disabled=false;$('#cookie-submit').disabled=false;$('#cookie-submit').textContent='重试导入'}
+ finally{cookieBusy=false;$('#cookie-close').disabled=false;loadStatus()}
+});
 async function showJournal(path){
   $("#ov-journal").classList.add("show");$("#journal-out").textContent="加载中…";
   try{const r=await fetch(path,{headers:{"Authorization":"Bearer "+TOKEN}});
