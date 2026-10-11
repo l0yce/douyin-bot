@@ -42,12 +42,12 @@
 
 ## 部署前准备
 
-安装脚本面向 **Ubuntu 24.04 / Debian 12 或更新版本**，使用 systemd 管理服务。需要：
+安装脚本适用于使用 **systemd** 的 Linux，自动识别 **apt、dnf 或 yum**，分别安装 Python 和 Firefox 所需依赖。推荐 Ubuntu 24.04 / Debian 12；dnf/yum 系统会使用 RPM 依赖安装方案，并在启动服务前检查 Firefox 能否运行。发行版要求和排查见 [Linux 安装说明](docs/LINUX.md)。需要：
 
 1. Python **3.11 或以上**、Node.js **20 或以上**及 npm。
 2. 你自己有权使用、能正常登录网页版私信的抖音账号。
 3. 兼容 OpenAI Chat Completions 的模型接口地址、API Key 和模型名。理解图片需要支持图片的模型。
-4. 能使用 SSH 和编辑 JSON 文件。其他 Linux 系统需要自行安装浏览器依赖。
+4. 能使用 SSH 和编辑 JSON 文件。系统软件源需提供所需依赖，Python 不足 3.11 时需先安装受支持的新版本。
 
 **如果部署在云服务器上，先准备家庭／住宅代理出口。** 本项目原部署遇到过机房 IP 无法正常登录抖音的情况，采用家庭出口访问抖音。代理应让抖音看到家庭宽带的出口 IP；换成另一台机房服务器的普通代理不能达到同样目的。不是所有机房 IP 都必然失败，家庭出口也不能保证免除登录验证。
 
@@ -61,11 +61,18 @@
 
 ## 1. 下载并安装
 
-在服务器执行：
+先安装 Git，按服务器的包管理器选择一条：
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y git
+# dnf 系统改用：sudo dnf install -y git
+# yum 系统改用：sudo yum install -y git
+```
+
+然后下载项目：
+
+```bash
 sudo git clone https://github.com/l0yce/douyin-bot.git /opt/douyin-bot
 cd /opt/douyin-bot
 # 先安装符合要求的 Node.js 和 npm，再执行下面的脚本。
@@ -73,6 +80,8 @@ sudo bash scripts/install.sh
 ```
 
 Node.js 安装说明见 [官网](https://nodejs.org/en/download)。
+
+可先运行 `bash scripts/install.sh --plan` 查看安装计划，此操作不会修改系统。不要覆盖系统自带 Python；脚本会优先选择已有的 Python 3.11 或以上版本。
 
 脚本会安装 Python 依赖、Firefox、幕间依赖，生成本地私密配置，并启动虚拟显示和面板。**不会自动启动机器人发消息**。依赖下载失败时，按终端报错处理后重跑。现有配置不会覆盖。
 
@@ -105,6 +114,8 @@ Node.js 安装说明见 [官网](https://nodejs.org/en/download)。
 ```
 
 HTTP 代理可填写 `http://127.0.0.1:7890`；不使用代理填 `""`。**这里的 127.0.0.1 指运行机器人的服务器，不是你自己的电脑。** 只在电脑上开代理，不会自动让服务器经过它。
+
+**端口区分：`1080` / `7890` 是代理示例端口，`8790` 是控制面板端口。** 代理端口按你实际的代理服务填写；如果代理也在机器人服务器上运行，请避开面板已占用的 `8790`。
 
 该设置用于抖音浏览器和视频评论读取，不会自动用于幕间或基础 AI 模型接口；邮件提醒通过 SMTP 直连。代理服务须已经启动，且服务器能够连接它。修改后重启机器人：
 
@@ -195,6 +206,8 @@ sudo systemctl status douyin-interlude douyin-friend-ai-bot --no-pager
 ## 打开面板
 
 最简单的是 SSH 隧道，无需开放面板端口。在自己的电脑执行并替换服务器地址：
+
+这里的 `ssh -L` 只用于打开控制面板，与上面的家庭代理出口是两回事。命令中的第一个 `8790` 是电脑的本地端口，第二个是服务器的面板端口。如果电脑的 `8790` 已被占用，可改为 `ssh -L 8791:127.0.0.1:8790 root@你的服务器地址`，随后访问 `http://127.0.0.1:8791/`；服务器面板端口无需更改。
 
 ```bash
 ssh -L 8790:127.0.0.1:8790 root@你的服务器地址
