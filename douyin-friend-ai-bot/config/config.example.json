@@ -5,6 +5,7 @@
     "cookies_file": "state/cookies.json",
     "engine": "firefox",
     "driver": "playwright",
+    "proxy_server": "",
     "headless": false,
     "profile_dir": "state/browser_profile_firefox",
     "user_agent": "",

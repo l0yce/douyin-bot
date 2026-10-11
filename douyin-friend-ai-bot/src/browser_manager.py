@@ -200,8 +200,8 @@ class BrowserSession:
         locale = self.cfg["account"].get("locale", "zh-CN")
         timezone = self.cfg["account"].get("timezone", "Asia/Shanghai")
         viewport = self.cfg["account"].get("viewport") or {"width": 1536, "height": 864}
-        # 住宅代理（可选）：数据中心 IP 容易被抖音限制 IM 数据/会话打开，
-        # 配 account.proxy_server 如 "http://user:pass@host:port" 即可走代理
+        # 可选代理地址，例如 socks5://127.0.0.1:1080。
+        # 当前只传 server；需要认证的代理请参考 docs/PROXY.md，勿假定 URL 内嵌凭据可用。
         proxy_server = str(self.cfg["account"].get("proxy_server") or "").strip()
         proxy = {"server": proxy_server} if proxy_server else None
         ss = storage_state_path(self.cfg)

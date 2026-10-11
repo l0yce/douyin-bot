@@ -17,6 +17,7 @@ DEFAULTS: dict[str, Any] = {
         # 静默拒绝打开会话；Firefox 实测可用。chromium 仅留给旧环境回退
         "engine": "firefox",
         "driver": "playwright",
+        "proxy_server": "",
         # 有头模式（Xvfb 虚拟屏）+ 持久化 profile：减少被识别为脚本的概率
         "headless": False,
         "profile_dir": "state/browser_profile_firefox",

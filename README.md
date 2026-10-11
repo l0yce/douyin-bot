@@ -86,7 +86,25 @@ Node.js 安装说明见 [官网](https://nodejs.org/en/download)。
 
 `vision_model` 留空表示没有配置图片模型。编辑同目录的 `persona.md` 填写角色设定，该文件不被 Git 跟踪。幕间首次使用这份人设；也可在面板的“剧情与记忆 → 设定”中管理剧情设定。
 
-需要代理时，在 `account` 中增加 `proxy_server`，例如 `http://127.0.0.1:7890`。这是抖音浏览器的代理，不会自动用于 AI 模型接口。请使用自己的代理配置。
+### 配置代理出口（按需）
+
+“代理出口”是服务器访问抖音时经过的另一条网络线路。程序不会自动提供代理节点；直接连接能正常使用时，可以留空。
+
+在 `config.json` 的 `account` 中设置：
+
+```json
+"proxy_server": "socks5://127.0.0.1:1080"
+```
+
+HTTP 代理可填写 `http://127.0.0.1:7890`；不使用代理填 `""`。**这里的 127.0.0.1 指运行机器人的服务器，不是你自己的电脑。** 只在电脑上开代理，不会自动让服务器经过它。
+
+该设置用于抖音浏览器和视频评论读取，不会自动用于幕间或基础 AI 模型接口；邮件提醒通过 SMTP 直连。代理服务须已经启动，且服务器能够连接它。修改后重启机器人：
+
+```bash
+sudo systemctl restart douyin-friend-ai-bot
+```
+
+需要认证的代理、如何检查连接和如何搭建 SSH 转发，见 [代理出口配置与排查](docs/PROXY.md)。示例地址不是可直接使用的公共代理，仓库不包含任何真实代理凭据。
 
 ## 3. 登录抖音
 
@@ -193,6 +211,7 @@ sudo journalctl -u douyin-interlude -n 80 --no-pager
 ```
 
 - [配置、更新和常见问题](docs/USAGE.md)
+- [代理出口配置与排查](docs/PROXY.md)
 - [隐私与公开发布说明](docs/PRIVACY.md)
 - [测试与验证范围](docs/VALIDATION.md)
 - [依赖检查记录](docs/DEPENDENCIES.md)
