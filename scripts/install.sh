@@ -53,9 +53,9 @@ command -v npm >/dev/null
 fi
 if [[ "$MANAGER" == apt ]]; then
   run apt-get update
-  run apt-get install -y python3 python3-venv python3-dev build-essential xvfb xauth git ca-certificates
+  run apt-get install -y python3 python3-venv python3-dev build-essential xvfb xauth git curl ca-certificates
 else
-  run "$MANAGER" install -y gcc gcc-c++ make git ca-certificates xorg-x11-server-Xvfb xorg-x11-xauth gtk3 dbus-glib alsa-lib libXt libX11 libXcomposite libXdamage libXfixes libXrandr libXrender libXtst libXcursor libXi libxcb libxkbcommon nss pango cairo fontconfig freetype mesa-libgbm libdrm
+  run "$MANAGER" install -y gcc gcc-c++ make git curl ca-certificates xorg-x11-server-Xvfb xorg-x11-xauth gtk3 dbus-glib alsa-lib libXt libX11 libXcomposite libXdamage libXfixes libXrandr libXrender libXtst libXcursor libXi libxcb libxkbcommon nss pango cairo fontconfig freetype mesa-libgbm libdrm
   if ! pick_python >/dev/null; then
     run "$MANAGER" install -y python3.11 python3.11-pip
   fi
@@ -109,4 +109,4 @@ PY
 systemctl daemon-reload
 systemctl enable --now douyin-bot-xvfb.service douyin-bot-panel.service
 echo '安装完成。面板监听 127.0.0.1:8790。机器人和幕间尚未启动。'
-echo '下一步：按 README 填写配置、导入 Cookie、发现好友、演练，再启动服务。'
+echo '下一步：按 README 打开并登录面板，填写配置、导入 Cookies、添加白名单，再从面板启动机器人。'
