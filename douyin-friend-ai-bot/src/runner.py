@@ -222,23 +222,45 @@ async def handle_friend(
     history = [m for m in messages if id(m) not in selected_objects]
     system_prompt = build_system_prompt(name, cfg["prompts"])
 
-    # Capture every pending image/sticker by its bubble token, including media
-    # preceding the newest text. A failed capture never acknowledges the batch.
+    # Capture each image independently; unavailable media must not block text.
     image_b64: str | None = None
     media = {}
     image_cfg = reply_cfg.get("images", {})
     images_enabled = image_cfg.get("enabled", True) and image_cfg.get("policy") != "skip"
     if images_enabled:
-        try:
-            for msg in decision.selected_messages:
-                if message_kind(msg) in ("image", "sticker") and msg.get("media_token"):
+        for msg in decision.selected_messages:
+            if message_kind(msg) in ("image", "sticker") and msg.get("media_token"):
+                try:
                     png_bytes = await chat.capture_message_image_png(msg)
                     media[msg["media_token"]] = base64.b64encode(png_bytes).decode("ascii")
-        except DouyinPageError as exc:
-            result.update(action="error", reason=f"读取图片或表情包失败: {exc}")
-            audit.log({"event": "image_error", "friend": name, "reason": str(exc)})
-            logger.error("[%s] %s", name, result["reason"])
-            return result
+                except DouyinPageError as exc:
+                    logger.warning("[%s] 图片读取失败，降级为文字处理：%s", name, type(exc).__name__)
+                    audit.log({"event": "image_fallback", "friend": name, "stage": "capture",
+                               "error_type": type(exc).__name__})
+
+    vision_failed = False
+
+    def unavailable_image(index):
+        return ("\n[第%d条为图片或表情包，内容未能识别。请结合可见文字和上下文自然回应；"
+                "不要猜测图案、配字或假装看懂，也不要向好友解释模型或接口错误。]" % index)
+
+    async def describe_image(index, data):
+        nonlocal vision_failed
+        if not vision_failed:
+            try:
+                observation = await asyncio.to_thread(ai.chat, [
+                    {"role": "system", "content": "只描述图片中可见的事实、文字和场景，不猜测身份或不可见内容。"},
+                    {"role": "user", "content": "请简洁描述这张图片或表情包，供后续聊天理解。"},
+                ], image_b64=data)
+                if observation and observation.strip():
+                    return "\n[第%d条的视觉观察，可能有误：]\n%s" % (index, observation)
+            except AIError as exc:
+                logger.warning("[%s] 识图失败，降级为文字处理：%s", name, type(exc).__name__)
+            # Stop repeated failed vision calls within this batch, but retry on
+            # future messages so a temporary provider failure can recover.
+            vision_failed = True
+            audit.log({"event": "image_fallback", "friend": name, "stage": "vision"})
+        return unavailable_image(index)
 
     if interlude_enabled(cfg):
         if dry_run:
@@ -264,18 +286,14 @@ async def handle_friend(
                     data = media.get(msg.get("media_token"))
                     if not data:
                         if message_kind(msg) in ("image", "sticker"):
-                            content += "\n[第%d条的图片像素未读取，请勿猜测图片内容。]" % index
+                            content += unavailable_image(index)
                         continue
                     media_number += 1
                     if native_vision:
                         image_sources.append("data:image/png;base64," + data)
                         content += "\n[附图%d对应上述第%d条消息，请结合图片理解。]" % (media_number, index)
                     else:
-                        observation = await asyncio.to_thread(ai.chat, [
-                            {"role": "system", "content": "只描述图片中可见的事实、文字和场景，不扮演聊天角色，不猜测身份或不可见内容。"},
-                            {"role": "user", "content": "请简洁描述这张图片或表情包，供后续聊天理解。"},
-                        ], image_b64=data)
-                        content += "\n[第%d条的视觉观察，可能有误：]\n%s" % (index, observation)
+                        content += await describe_image(index, data)
                 if read_video_comments:
                     fresh_messages = await chat.read_messages(limit=200)
                     if not fresh_messages or not messages or message_fingerprint(fresh_messages[0]) != message_fingerprint(messages[0]):
@@ -294,24 +312,12 @@ async def handle_friend(
             audit.log({"event": "interlude_error", **result})
         return result
 
-    # The legacy client accepts one image per request. Describe the other images
-    # separately, preserving their positions and the complete incoming text.
-    media_items = [(i, media[m["media_token"]]) for i, m in enumerate(decision.selected_messages, 1)
-                   if m.get("media_token") in media]
-    try:
-        for index, data in media_items[:-1]:
-            observation = await asyncio.to_thread(ai.chat, [
-                {"role": "system", "content": "只描述可见的图片事实和文字，不猜测身份或不可见内容。"},
-                {"role": "user", "content": "描述这张图片或表情包。"},
-            ], image_b64=data)
-            incoming += "\n[第%d条的视觉观察，可能有误：]\n%s" % (index, observation)
-        if media_items:
-            index, image_b64 = media_items[-1]
-            incoming += "\n[附图对应上述第%d条消息。]" % index
-    except AIError as exc:
-        result.update(action="error", reason="视觉识别失败：" + str(exc))
-        audit.log({"event": "image_error", **result})
-        return result
+    # Isolate image understanding from text generation so either a capture or
+    # vision failure can still produce a normal text reply.
+    for index, msg in enumerate(decision.selected_messages, 1):
+        if message_kind(msg) in ("image", "sticker"):
+            data = media.get(msg.get("media_token"))
+            incoming += await describe_image(index, data) if data else unavailable_image(index)
 
     user_prompt = build_user_prompt(
         name,
@@ -319,7 +325,7 @@ async def handle_friend(
         incoming,
         cfg["prompts"],
         max_history=int(reply_cfg.get("history_messages", 8)),
-        image=bool(media),
+        image=False,
     )
 
     started = time.time()
@@ -364,8 +370,7 @@ async def handle_friend(
         return result
 
     result["reply_text"] = reply_text
-    result["ai_model"] = (cfg["ai"].get("vision_model", "") if kind == "image"
-                         else cfg["ai"].get("model", ""))
+    result["ai_model"] = cfg["ai"].get("model", "")
 
     if dry_run:
         result.update(action="dry_reply", reason="dry-run：只生成不发送")
